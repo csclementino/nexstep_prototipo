@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexstep - Dashboard de Monitoramento</title>
+    <!-- Fonts and Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Libraries: Three.js for 3D & Chart.js for graphs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* CSS Variables - Color Palette */
+        :root {
+            --c-bg: #111111;
+            --c-card: #2a2a2a;
+            --c-text: #ffffff;
+            --c-text-muted: #999999;
+            --c-primary: #7045ff;
+            --c-primary-light: #9778ff;
+            --c-primary-dark: #4912ff;
+            --c-green: #00e676;
+            --c-yellow: #ffea00;
+            --c-red: #ff1744;
+            --font-main: 'Sora', sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--c-bg);
+            color: var(--c-text);
+            font-family: var(--font-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* SVG Logo Recreation */
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 24px;
+            font-weight: 800;
+            font-size: 24px;
+            color: var(--c-text);
+            letter-spacing: -0.5px;
+        }
+        
+        .logo-svg {
+            width: 36px;
+            height: 36px;
+            fill: var(--c-primary);
+        }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            width: 260px;
+            background-color: #161616;
+            border-right: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
+        }
+
+        .nav-menu {
+            list-style: none;
+            padding: 0 16px;
+            margin-top: 20px;
+        }
+
+        .nav-item {
+            padding: 14px 16px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--c-text-muted);
+            font-weight: 600;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            background-color: var(--c-primary-dark);
+            color: var(--c-text);
+        }
+
+        .nav-item.active {
+            background-color: var(--c-primary);
+        }
+
+        /* Main Dashboard Content */
+        .main-content {
+            flex: 1;
+            padding: 32px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+        }
+
+        .header-title {
+            font-size: 28px;
+            font-weight: 600;
+        }
+
+        /* Top Statistics Row */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: var(--c-card);
+            padding: 24px;
+            border-radius: 16px;
+            border: 1px solid #3a3a3a;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s ease, border-color 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--c-primary-light);
+        }
+        
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 4px;
+        }
+        .stat-card.all::before { background: var(--c-primary); }
+        .stat-card.green::before { background: var(--c-green); }
+        .stat-card.yellow::before { background: var(--c-yellow); }
+        .stat-card.red::before { background: var(--c-red); }
+
+        .stat-value {
+            font-size: 36px;
+            font-weight: 800;
+            margin: 12px 0 4px;
+        }
+
+        .stat-label {
+            color: var(--c-text-muted);
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Escalators Grid */
+        .escalators-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 24px;
+        }
+
+        .escalator-card {
+            background: var(--c-card);
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid #3a3a3a;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .escalator-card:hover {
+            transform: scale(1.02);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border-color: var(--c-primary);
+        }
+
+        .esc-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+
+        .esc-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .esc-location {
+            color: var(--c-text-muted);
+            font-size: 14px;
+            margin-top: 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-badge i { font-size: 10px; }
+        
+        .badge-green { background: rgba(0, 230, 118, 0.1); color: var(--c-green); border: 1px solid rgba(0,230,118,0.3); }
+        .badge-yellow { background: rgba(255, 234, 0, 0.1); color: var(--c-yellow); border: 1px solid rgba(255,234,0,0.3); }
+        .badge-red { background: rgba(255, 23, 68, 0.1); color: var(--c-red); border: 1px solid rgba(255,23,68,0.3); animation: pulse-red 2s infinite; }
+
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(255, 23, 68, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 23, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 23, 68, 0); }
+        }
+
+        .esc-metrics {
+            display: flex;
+            gap: 16px;
+            margin-top: 20px;
+            border-top: 1px solid #444;
+            padding-top: 16px;
+        }
+
+        .metric {
+            flex: 1;
+            background: rgba(0,0,0,0.2);
+            padding: 12px;
+            border-radius: 8px;
+        }
+        
+        .metric-val { font-size: 18px; font-weight: 600; }
+        .metric-lbl { font-size: 12px; color: var(--c-text-muted); margin-top: 4px; }
+
+        /* Detail Modal (3D & Reports) */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(8px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        .modal-content {
+            background: var(--c-bg);
+            width: 95%;
+            max-width: 1400px;
+            height: 90vh;
+            border-radius: 24px;
+            border: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 24px 60px rgba(0,0,0,0.8);
+            transform: scale(0.95);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            padding: 24px 32px;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--c-card);
+        }
+
+        .modal-body {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .model-container {
+            flex: 2;
+            background: #0a0a0a;
+            position: relative;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+        }
+
+        .sensor-panel {
+            flex: 1;
+            min-width: 400px;
+            background: var(--c-card);
+            border-left: 1px solid #333;
+            padding: 24px;
+            overflow-y: auto;
+        }
+
+        .close-btn {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            width: 40px; height: 40px;
+            border-radius: 50%;
+            color: var(--c-text);
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .close-btn:hover { background: var(--c-primary); }
+
+        /* Report Styles */
+        .report-section {
+            margin-bottom: 28px;
+        }
+        .report-title {
+            font-size: 14px;
+            color: var(--c-text-muted);
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 1px solid #444;
+            padding-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .sensor-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            margin-bottom: 12px;
+            border: 1px solid transparent;
+            transition: all 0.2s;
+        }
+        .sensor-item.critical {
+            background: rgba(255, 23, 68, 0.1);
+            border: 1px solid rgba(255, 23, 68, 0.4);
+            animation: pulse-border-red 2s infinite;
+        }
+        .sensor-item.warning {
+            background: rgba(255, 234, 0, 0.1);
+            border: 1px solid rgba(255, 234, 0, 0.4);
+        }
+
+        @keyframes pulse-border-red {
+            0% { border-color: rgba(255, 23, 68, 0.4); }
+            50% { border-color: rgba(255, 23, 68, 1); }
+            100% { border-color: rgba(255, 23, 68, 0.4); }
+        }
+        
+        .s-name { font-weight: 600; display: flex; align-items: center; gap: 12px; font-size: 15px; }
+        .s-val { font-family: monospace; font-size: 18px; font-weight: 800; }
+
+        .btn-action {
+            width: 100%;
+            padding: 16px;
+            background: var(--c-primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            margin-top: 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+        }
+        .btn-action:hover { background: var(--c-primary-light); }
+        .btn-action:active { transform: scale(0.98); }
+        .btn-action.btn-danger { background: var(--c-red); }
+        .btn-action.btn-danger:hover { background: #ff4569; }
+        
+        .chart-container {
+            height: 220px;
+            margin-top: 16px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 12px;
+            padding: 16px;
+        }
+        
+        .overlay-label {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            background: rgba(0,0,0,0.85);
+            padding: 16px 24px;
+            border-radius: 12px;
+            border: 1px solid #333;
+            pointer-events: none;
+            backdrop-filter: blur(4px);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="logo-container">
+            <svg width="180" viewBox="0 0 386 83" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M68.3751 28.3149C61.6366 34.7235 52.2594 37.3152 43.2826 38.611C35.2719 39.7891 26.9077 40.2839 19.7452 43.3939C12.2528 46.6689 7.54057 52.0879 7.91755 60.4757C8.15316 65.5177 10.8627 70.442 14.6796 74.2353C15.7398 75.0835 16.8236 75.8846 17.9545 76.615C17.8839 76.4736 17.8132 76.3087 17.6954 76.1673C13.1481 69.9236 9.61394 52.0408 33.4106 48.1533C38.1934 47.3757 42.9763 46.5747 47.7356 45.4909C51.9295 44.5249 59.4219 42.1688 60.2465 41.7211C60.9298 41.3206 55.7935 47.093 40.0548 51.6167C15.0565 58.8028 22.7374 79.5601 30.3712 81.9397C33.2928 82.6466 36.3557 83 39.4893 83C61.3068 83 79.0011 65.3292 79.0011 43.5117C79.0011 35.6659 76.7157 28.362 72.781 22.2361C71.7208 24.5451 70.2364 26.5242 68.3751 28.3149Z" fill="var(--c-primary)"/>
+                <path d="M0 43.5118C0 47.847 0.70683 51.9702 1.97912 55.8813C2.45035 51.5932 3.91113 47.5407 6.6442 44.1008C11.592 37.8101 19.2729 34.8649 27.2601 33.2863C35.2237 31.7313 43.7057 31.5428 51.8814 29.5637C56.4051 28.4799 60.9995 26.7128 64.6514 23.8148C67.6908 21.3645 69.1044 17.6418 65.9473 14.1784C64.7928 13.1417 63.5676 12.1521 62.2953 11.2568C64.6043 15.9926 62.8137 23.0373 44.0827 24.8751C39.2762 25.3698 34.4933 25.8175 29.7576 26.4772C28.3675 26.6657 26.6475 26.9249 24.8804 27.2312C24.8804 27.2312 26.4355 25.2992 37.4149 22.8017C59.9863 17.7125 55.7689 7.88757 49.0776 5.17805C46.0147 4.4241 42.7868 4 39.4883 4C17.6708 4.02356 0 21.6943 0 43.5118Z" fill="var(--c-primary)"/>
+                <path d="M101.672 62V26.928H109.8V41.968H109.224C109.224 38.384 109.672 35.3973 110.568 33.008C111.507 30.6187 112.915 28.8267 114.792 27.632C116.669 26.4373 118.952 25.84 121.64 25.84H122.088C126.184 25.84 129.299 27.184 131.432 29.872C133.608 32.5173 134.696 36.5493 134.696 41.968V62H124.456V41.392C124.456 39.5147 123.901 37.9787 122.792 36.784C121.683 35.5893 120.189 34.992 118.312 34.992C116.392 34.992 114.835 35.6107 113.64 36.848C112.488 38.0427 111.912 39.6213 111.912 41.584V62H101.672ZM159.486 63.216C156.499 63.216 153.854 62.704 151.55 61.68C149.289 60.656 147.39 59.2907 145.854 57.584C144.361 55.8347 143.209 53.8933 142.398 51.76C141.63 49.584 141.246 47.3653 141.246 45.104V43.824C141.246 41.4773 141.63 39.2373 142.398 37.104C143.209 34.928 144.361 32.9867 145.854 31.28C147.347 29.5733 149.203 28.2293 151.422 27.248C153.683 26.224 156.243 25.712 159.102 25.712C162.857 25.712 166.014 26.5653 168.574 28.272C171.177 29.936 173.161 32.1333 174.526 34.864C175.891 37.552 176.574 40.496 176.574 43.696V47.152H145.534V41.328H170.366L167.038 44.016C167.038 41.9253 166.739 40.1333 166.142 38.64C165.545 37.1467 164.649 36.016 163.454 35.248C162.302 34.4373 160.851 34.032 159.102 34.032C157.31 34.032 155.795 34.4373 154.558 35.248C153.321 36.0587 152.382 37.2533 151.742 38.832C151.102 40.368 150.782 42.2667 150.782 44.528C150.782 46.6187 151.081 48.4533 151.678 50.032C152.275 51.568 153.214 52.7627 154.494 53.616C155.774 54.4693 157.438 54.896 159.486 54.896C161.363 54.896 162.899 54.5333 164.094 53.808C165.289 53.0827 166.099 52.1867 166.526 51.12H175.934C175.422 53.4667 174.419 55.5573 172.926 57.392C171.433 59.2267 169.555 60.656 167.294 61.68C165.033 62.704 162.43 63.216 159.486 63.216ZM179.268 62L190.148 43.184L189.892 44.784L179.652 26.928H190.724L197.06 38.832H198.084L204.036 26.928H214.468L204.676 44.912L204.932 43.568L216.452 62H205.316L197.764 49.264H196.74L189.636 62H179.268ZM234.234 63.088C229.242 63.088 225.338 62.064 222.522 60.016C219.706 57.968 218.213 55.088 218.042 51.376H227.13C227.301 52.4853 227.962 53.488 229.114 54.384C230.309 55.2373 232.079 55.664 234.426 55.664C236.218 55.664 237.69 55.3653 238.842 54.768C240.037 54.128 240.634 53.232 240.634 52.08C240.634 51.056 240.186 50.2453 239.29 49.648C238.394 49.008 236.794 48.56 234.49 48.304L231.738 48.048C227.514 47.6213 224.335 46.448 222.202 44.528C220.111 42.608 219.066 40.1547 219.066 37.168C219.066 34.6933 219.685 32.624 220.922 30.96C222.159 29.296 223.866 28.0373 226.042 27.184C228.261 26.3307 230.778 25.904 233.594 25.904C238.117 25.904 241.765 26.9067 244.538 28.912C247.311 30.8747 248.762 33.7333 248.89 37.488H239.802C239.631 36.336 239.034 35.376 238.01 34.608C236.986 33.7973 235.471 33.392 233.466 33.392C231.887 33.392 230.629 33.6907 229.69 34.288C228.751 34.8853 228.282 35.696 228.282 36.72C228.282 37.7013 228.687 38.448 229.498 38.96C230.309 39.472 231.631 39.8347 233.466 40.048L236.218 40.304C240.527 40.7733 243.877 41.968 246.266 43.888C248.655 45.808 249.85 48.3893 249.85 51.632C249.85 53.9787 249.21 56.0267 247.93 57.776C246.65 59.4827 244.837 60.8053 242.49 61.744C240.143 62.64 237.391 63.088 234.234 63.088ZM272.421 62.448C268.879 62.448 266.021 62.0213 263.845 61.168C261.669 60.272 260.069 58.8 259.045 56.752C258.063 54.6613 257.573 51.8453 257.573 48.304V17.456H267.109V48.688C267.109 50.352 267.535 51.632 268.389 52.528C269.285 53.3813 270.543 53.808 272.165 53.808H277.349V62.448H272.421ZM252.261 34.416V26.928H277.349V34.416H252.261ZM300.174 63.216C297.187 63.216 294.542 62.704 292.238 61.68C289.976 60.656 288.078 59.2907 286.542 57.584C285.048 55.8347 283.896 53.8933 283.086 51.76C282.318 49.584 281.934 47.3653 281.934 45.104V43.824C281.934 41.4773 282.318 39.2373 283.086 37.104C283.896 34.928 285.048 32.9867 286.542 31.28C288.035 29.5733 289.891 28.2293 292.11 27.248C294.371 26.224 296.931 25.712 299.79 25.712C303.544 25.712 306.702 26.5653 309.262 28.272C311.864 29.936 313.848 32.1333 315.214 34.864C316.579 37.552 317.262 40.496 317.262 43.696V47.152H286.222V41.328H311.054L307.726 44.016C307.726 41.9253 307.427 40.1333 306.83 38.64C306.232 37.1467 305.336 36.016 304.142 35.248C302.99 34.4373 301.539 34.032 299.79 34.032C297.998 34.032 296.483 34.4373 295.246 35.248C294.008 36.0587 293.07 37.2533 292.43 38.832C291.79 40.368 291.47 42.2667 291.47 44.528C291.47 46.6187 291.768 48.4533 292.366 50.032C292.963 51.568 293.902 52.7627 295.182 53.616C296.462 54.4693 298.126 54.896 300.174 54.896C302.051 54.896 303.587 54.5333 304.782 53.808C305.976 53.0827 306.787 52.1867 307.214 51.12H316.622C316.11 53.4667 315.107 55.5573 313.614 57.392C312.12 59.2267 310.243 60.656 307.982 61.68C305.72 62.704 303.118 63.216 300.174 63.216ZM324.047 74.8V26.928H332.175V42.096L331.087 42.032C331.258 38.5333 331.983 35.5893 333.263 33.2C334.543 30.768 336.271 28.9547 338.447 27.76C340.623 26.5227 343.076 25.904 345.807 25.904C348.239 25.904 350.436 26.352 352.399 27.248C354.404 28.144 356.111 29.4027 357.519 31.024C358.97 32.6027 360.058 34.48 360.783 36.656C361.551 38.7893 361.935 41.136 361.935 43.696V45.168C361.935 47.6853 361.572 50.0533 360.847 52.272C360.122 54.448 359.055 56.3467 357.647 57.968C356.282 59.5893 354.596 60.8693 352.591 61.808C350.628 62.704 348.367 63.152 345.807 63.152C343.162 63.152 340.772 62.6187 338.639 61.552C336.548 60.4427 334.863 58.7787 333.583 56.56C332.303 54.2987 331.599 51.44 331.471 47.984L334.287 51.824V74.8H324.047ZM342.927 54.576C344.676 54.576 346.191 54.1493 347.471 53.296C348.794 52.4427 349.818 51.248 350.543 49.712C351.268 48.176 351.631 46.4053 351.631 44.4C351.631 42.3947 351.268 40.6453 350.543 39.152C349.818 37.6587 348.815 36.5067 347.535 35.696C346.255 34.8427 344.719 34.416 342.927 34.416C341.391 34.416 339.94 34.7787 338.575 35.504C337.21 36.2293 336.1 37.2747 335.247 38.64C334.436 39.9627 334.031 41.584 334.031 43.504V45.872C334.031 47.7067 334.458 49.2853 335.311 50.608C336.207 51.888 337.338 52.8693 338.703 53.552C340.068 54.2347 341.476 54.576 342.927 54.576Z" fill="var(--c-primary)"/>
+            </svg>
+        </div>
+        <ul class="nav-menu">
+            <li class="nav-item active"><i class="fa-solid fa-chart-pie"></i> Visão Geral</li>
+            <li class="nav-item"><i class="fa-solid fa-train-subway"></i> Estações e Linhas</li>
+            <li class="nav-item"><i class="fa-solid fa-triangle-exclamation"></i> Alertas Ativos</li>
+            <li class="nav-item"><i class="fa-solid fa-file-contract"></i> Relatórios Técnicos</li>
+            <li class="nav-item"><i class="fa-solid fa-gear"></i> Configurações</li>
+        </ul>
+        <div style="margin-top: auto; padding: 24px;">
+            <div style="background: rgba(112,69,255,0.1); border: 1px solid var(--c-primary); border-radius: 8px; padding: 16px; text-align: center;">
+                <i class="fa-solid fa-headset" style="font-size: 24px; color: var(--c-primary); margin-bottom: 8px;"></i>
+                <div style="font-size: 14px; font-weight: 600;">Suporte Técnico</div>
+                <div style="font-size: 12px; color: var(--c-text-muted); margin-top: 4px;">Atendimento 24/7</div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Dashboard -->
+    <main class="main-content">
+        <header class="header">
+            <div>
+                <h1 class="header-title">Monitoramento de Escadas Rolantes</h1>
+                <p style="color: var(--c-text-muted); margin-top: 4px; font-size: 15px;">Status da rede metroviária integrado com sensores IoT.</p>
+            </div>
+            <div style="display: flex; gap: 16px; align-items: center; background: var(--c-card); padding: 8px 16px; border-radius: 30px; border: 1px solid #333;">
+                <div style="text-align: right;">
+                    <div style="font-weight: 600; font-size: 14px;">Técnico Responsável</div>
+                    <div style="color: var(--c-primary-light); font-size: 12px;">Carlos Eduardo</div>
+                </div>
+                <div style="width: 40px; height: 40px; border-radius: 50%; background: var(--c-primary); display: flex; justify-content: center; align-items: center; font-weight: 800; font-size: 16px;">
+                    CE
+                </div>
+            </div>
+        </header>
+
+        <!-- KPI Cards -->
+        <div class="stats-grid">
+            <div class="stat-card all">
+                <div class="stat-label">Total Monitorado</div>
+                <div class="stat-value">148</div>
+                <div style="color: var(--c-text-muted); font-size: 13px;"><i class="fa-solid fa-arrow-trend-up"></i> 100% dos sensores online</div>
+            </div>
+            <div class="stat-card green">
+                <div class="stat-label">Operação Normal</div>
+                <div class="stat-value" style="color: var(--c-green);">134</div>
+                <div style="color: var(--c-text-muted); font-size: 13px;"><i class="fa-solid fa-check"></i> Sem anomalias detectadas</div>
+            </div>
+            <div class="stat-card yellow">
+                <div class="stat-label">Atenção (Manutenção)</div>
+                <div class="stat-value" style="color: var(--c-yellow);">11</div>
+                <div style="color: var(--c-text-muted); font-size: 13px;"><i class="fa-solid fa-wrench"></i> Agendar vistoria preventiva</div>
+            </div>
+            <div class="stat-card red">
+                <div class="stat-label">Crítico (Paralisada)</div>
+                <div class="stat-value" style="color: var(--c-red);">3</div>
+                <div style="color: var(--c-text-muted); font-size: 13px;"><i class="fa-solid fa-triangle-exclamation"></i> Intervenção imediata requerida</div>
+            </div>
+        </div>
+
+        <div style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center;">
+            <h2 style="font-size: 20px; font-weight: 600;">Status por Equipamento</h2>
+            <div style="display: flex; gap: 12px;">
+                <input type="text" placeholder="Buscar estação ou equipamento..." style="padding: 10px 16px; background: var(--c-card); border: 1px solid #444; color: white; border-radius: 8px; outline: none; width: 250px;">
+                <button style="padding: 10px 16px; background: var(--c-card); border: 1px solid #444; color: white; border-radius: 8px; cursor: pointer;">
+                    <i class="fa-solid fa-filter"></i> Filtrar <i class="fa-solid fa-chevron-down" style="font-size: 10px; margin-left: 6px;"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Grid de Escadas -->
+        <div class="escalators-grid" id="escalator-list">
+            <!-- Cards gerados dinamicamente via JS -->
+        </div>
+    </main>
+
+    <!-- Modal de Detalhes 3D e Relatório -->
+    <div class="modal-overlay" id="detail-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h2 id="modal-title" style="font-size: 28px; font-weight: 800;">Escada Rolante ER-04</h2>
+                    <p id="modal-subtitle" style="color: var(--c-text-muted); margin-top: 6px; font-size: 15px; display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-location-dot"></i> Linha 4-Amarela • Estação Paulista
+                    </p>
+                </div>
+                <div style="display: flex; gap: 16px; align-items: center;">
+                    <span id="modal-badge" class="status-badge badge-red" style="font-size: 14px; padding: 8px 16px;">
+                        <i class="fa-solid fa-circle-exclamation"></i> Falha Crítica
+                    </span>
+                    <button class="close-btn" onclick="closeModal()" title="Fechar (Esc)">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="modal-body">
+                <!-- Visão 3D (Gêmeo Digital) -->
+                <div class="model-container">
+                    <div id="canvas-container"></div>
+                    <div class="overlay-label">
+                        <div style="font-weight: 800; color: var(--c-primary-light); margin-bottom: 6px; font-size: 16px;">
+                            <i class="fa-solid fa-cube"></i> Gêmeo Digital (Tempo Real)
+                        </div>
+                        <div style="font-size: 13px; color: #aaa;">
+                            <i class="fa-solid fa-mouse"></i> Arraste para inspecionar • Role para zoom
+                        </div>
+                        <div id="model-status-text" style="margin-top: 12px; font-size: 15px; color: var(--c-red); font-weight: 700; background: rgba(255,23,68,0.1); padding: 8px; border-radius: 6px; border: 1px solid rgba(255,23,68,0.3);">
+                            <i class="fa-solid fa-fire"></i> Superaquecimento no Motor de Tração
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Relatório Técnico -->
+                <div class="sensor-panel">
+                    <div class="report-section">
+                        <div class="report-title">Diagnóstico IA</div>
+                        <p style="font-size: 15px; color: #ddd; line-height: 1.6; margin-bottom: 20px; background: rgba(255,255,255,0.05); padding: 16px; border-radius: 8px;" id="diagnostic-text">
+                            O sistema detectou um aumento anormal de temperatura no compartimento do motor principal, acompanhado de vibração excessiva no eixo de tração. Desligamento automático de segurança foi acionado para evitar danos estruturais.
+                        </p>
+                        
+                        <div class="report-title">Telemetria de Sensores</div>
+                        
+                        <div class="sensor-item" id="sensor-temp">
+                            <div class="s-name">
+                                <div style="width: 32px; height: 32px; background: rgba(255,255,255,0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                    <i class="fa-solid fa-temperature-arrow-up"></i>
+                                </div>
+                                Temp. Motor
+                            </div>
+                            <div class="s-val" id="val-temp">87 °C</div>
+                        </div>
+                        
+                        <div class="sensor-item" id="sensor-vibr">
+                            <div class="s-name">
+                                <div style="width: 32px; height: 32px; background: rgba(255,255,255,0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                    <i class="fa-solid fa-wave-square"></i>
+                                </div>
+                                Vibração (Eixo)
+                            </div>
+                            <div class="s-val" id="val-vibr">12.4 mm/s</div>
+                        </div>
+                        
+                        <div class="sensor-item">
+                            <div class="s-name">
+                                <div style="width: 32px; height: 32px; background: rgba(255,255,255,0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                    <i class="fa-solid fa-bolt"></i>
+                                </div>
+                                Tensão / Corrente
+                            </div>
+                            <div class="s-val">42 A / 380 V</div>
+                        </div>
+                        
+                        <div class="sensor-item">
+                            <div class="s-name">
+                                <div style="width: 32px; height: 32px; background: rgba(255,255,255,0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                    <i class="fa-solid fa-gauge-high"></i>
+                                </div>
+                                Tensão Corrimão
+                            </div>
+                            <div class="s-val">450 N</div>
+                        </div>
+                    </div>
+                    
+                    <div class="report-section">
+                        <div class="report-title" style="display: flex; justify-content: space-between;">
+                            Histórico de Temperatura 
+                            <span style="font-size: 11px; font-weight: normal; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px;">Últimas 2 horas</span>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="tempChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div id="action-buttons">
+                        <button class="btn-action btn-danger" onclick="alert('Ordem de serviço #OS-2023-991 gerada com sucesso e despachada para a equipe de manutenção da estação!')">
+                            <i class="fa-solid fa-screwdriver-wrench"></i> Emitir Ordem de Serviço Urgente
+                        </button>
+                    </div>
+                    
+                    <button class="btn-action" style="background: transparent; border: 1px solid var(--c-primary); margin-top: 12px; color: var(--c-primary-light);">
+                        <i class="fa-solid fa-book"></i> Acessar Manual Técnico do Equipamento
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Dados Simulados do IoT Nexstep ---
+        const escalators = [
+            { id: 'ER-04 (Subida)', line: 'Linha 4-Amarela', station: 'Estação Paulista', status: 'red', temp: 87, vibr: 12.4, desc: 'Falha Crítica - Paralisada' },
+            { id: 'ER-12 (Descida)', line: 'Linha 1-Azul', station: 'Estação Sé', status: 'red', temp: 92, vibr: 8.1, desc: 'Superaquecimento Motor' },
+            { id: 'ER-01 (Acesso)', line: 'Linha 3-Vermelha', station: 'Estação Palmeiras-Barra Funda', status: 'red', temp: 85, vibr: 15.2, desc: 'Travamento Eixo Tração' },
+            { id: 'ER-08 (Subida)', line: 'Linha 2-Verde', station: 'Estação Consolação', status: 'yellow', temp: 65, vibr: 5.4, desc: 'Atenção - Desgaste Componente' },
+            { id: 'ER-22 (Subida)', line: 'Linha 5-Lilás', station: 'Estação Capão Redondo', status: 'yellow', temp: 60, vibr: 6.2, desc: 'Atenção - Ruído Anormal' },
+            { id: 'ER-35 (Descida)', line: 'Linha 4-Amarela', station: 'Estação Faria Lima', status: 'yellow', temp: 58, vibr: 5.8, desc: 'Atenção - Tensão Corrimão' },
+            { id: 'ER-02 (Acesso)', line: 'Linha 1-Azul', station: 'Estação Paraíso', status: 'green', temp: 42, vibr: 1.2, desc: 'Operação Normal' },
+            { id: 'ER-15 (Subida)', line: 'Linha 2-Verde', station: 'Estação Ana Rosa', status: 'green', temp: 40, vibr: 1.5, desc: 'Operação Normal' },
+            { id: 'ER-16 (Descida)', line: 'Linha 2-Verde', station: 'Estação Vila Madalena', status: 'green', temp: 39, vibr: 1.1, desc: 'Operação Normal' },
+        ];
+
+        const listContainer = document.getElementById('escalator-list');
+
+        function getStatusInfo(status) {
+            if(status === 'red') return { class: 'badge-red', icon: 'fa-circle-exclamation', text: 'Crítico', color: 'var(--c-red)' };
+            if(status === 'yellow') return { class: 'badge-yellow', icon: 'fa-triangle-exclamation', text: 'Atenção', color: 'var(--c-yellow)' };
+            return { class: 'badge-green', icon: 'fa-check', text: 'Normal', color: 'var(--c-green)' };
+        }
+
+        // Renderizar Grid Principal
+        escalators.forEach(esc => {
+            const s = getStatusInfo(esc.status);
+            const card = document.createElement('div');
+            card.className = 'escalator-card';
+            card.onclick = () => openModal(esc);
+            
+            // Highlight text for critical issues
+            const tempClass = esc.status === 'red' && esc.temp > 80 ? `style="color: var(--c-red);"` : '';
+            const vibrClass = esc.status === 'red' && esc.vibr > 8 ? `style="color: var(--c-red);"` : (esc.status === 'yellow' ? `style="color: var(--c-yellow);"` : '');
+
+            card.innerHTML = `
+                <div class="esc-header">
+                    <div>
+                        <div class="esc-title">${esc.id}</div>
+                        <div class="esc-location"><i class="fa-solid fa-train-subway"></i> ${esc.line} • ${esc.station}</div>
+                    </div>
+                    <div class="status-badge ${s.class}">
+                        <i class="fa-solid ${s.icon}"></i> ${s.text}
+                    </div>
+                </div>
+                <div style="font-size: 14px; color: ${s.color}; font-weight: 600; margin-top: 12px; background: rgba(255,255,255,0.05); padding: 8px; border-radius: 6px;">
+                    ${esc.desc}
+                </div>
+                <div class="esc-metrics">
+                    <div class="metric">
+                        <div class="metric-val" ${tempClass}>${esc.temp} °C</div>
+                        <div class="metric-lbl">Temperatura</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-val" ${vibrClass}>${esc.vibr} mm/s</div>
+                        <div class="metric-lbl">Vibração</div>
+                    </div>
+                </div>
+            `;
+            listContainer.appendChild(card);
+        });
+
+        // --- Sistema 3D (Three.js) ---
+        let scene, camera, renderer, controls;
+        let motorMesh, alertLight, alertSphereMat;
+        let animationId;
+        let is3DInitialized = false;
+        let currentStatus = 'green';
+
+        function init3D() {
+            if(is3DInitialized) return;
+            
+            const container = document.getElementById('canvas-container');
+            
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0a0a);
+            
+            // Chão quadriculado premium
+            const gridHelper = new THREE.GridHelper(30, 30, 0x333333, 0x1a1a1a);
+            scene.add(gridHelper);
+
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(12, 10, 15);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxPolarAngle = Math.PI / 2 + 0.1; // não deixa ir muito pra baixo da terra
+
+            // Iluminação
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+            scene.add(ambientLight);
+            
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(10, 15, 10);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 1024;
+            dirLight.shadow.mapSize.height = 1024;
+            scene.add(dirLight);
+
+            // Spotlight para destacar a escada
+            const spotLight = new THREE.SpotLight(0x7045ff, 1);
+            spotLight.position.set(0, 15, 0);
+            spotLight.angle = Math.PI/4;
+            spotLight.penumbra = 0.5;
+            scene.add(spotLight);
+
+            // ==========================================
+            // Construção do Modelo da Escada Rolante
+            // ==========================================
+            const escalatorGroup = new THREE.Group();
+
+            // Materiais
+            const matMetal = new THREE.MeshStandardMaterial({ color: 0x3a3a3a, roughness: 0.5, metalness: 0.7 });
+            const matDarkMetal = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8, metalness: 0.3 });
+            const matGlass = new THREE.MeshStandardMaterial({ 
+                color: 0x9778ff, transparent: true, opacity: 0.3, roughness: 0.1, metalness: 0.9 
+            });
+            const matHandrail = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9, metalness: 0.1 });
+            
+            // Degraus
+            const stepCount = 18;
+            for(let i=0; i<stepCount; i++) {
+                const stepGeo = new THREE.BoxGeometry(4, 0.4, 1.2);
+                const step = new THREE.Mesh(stepGeo, matMetal);
+                step.castShadow = true;
+                step.receiveShadow = true;
+                // Configura para fazer uma diagonal
+                let yOffset = i * 0.4;
+                let zOffset = -i * 1.2;
+                
+                // Patamares no início e fim
+                if(i < 3) { yOffset = 0; zOffset = -i * 1.2; }
+                else if (i > stepCount - 4) { yOffset = (stepCount-7)*0.4; zOffset = -i * 1.2; }
+                else { yOffset = (i-3)*0.4; zOffset = -i * 1.2; }
+
+                step.position.set(0, yOffset, zOffset);
+                escalatorGroup.add(step);
+            }
+
+            // Vidros laterais (Guarda-corpos)
+            const glassGeo = new THREE.BoxGeometry(0.2, 3, 22);
+            const glassR = new THREE.Mesh(glassGeo, matGlass);
+            glassR.position.set(2.2, 3, -10);
+            glassR.rotation.x = Math.PI / 10;
+            escalatorGroup.add(glassR);
+
+            const glassL = new THREE.Mesh(glassGeo, matGlass);
+            glassL.position.set(-2.2, 3, -10);
+            glassL.rotation.x = Math.PI / 10;
+            escalatorGroup.add(glassL);
+
+            // Corrimãos (Handrails)
+            const handrailGeo = new THREE.BoxGeometry(0.5, 0.2, 22.5);
+            const handrailR = new THREE.Mesh(handrailGeo, matHandrail);
+            handrailR.position.set(2.2, 4.6, -10);
+            handrailR.rotation.x = Math.PI / 10;
+            escalatorGroup.add(handrailR);
+
+            const handrailL = new THREE.Mesh(handrailGeo, matHandrail);
+            handrailL.position.set(-2.2, 4.6, -10);
+            handrailL.rotation.x = Math.PI / 10;
+            escalatorGroup.add(handrailL);
+
+            // Caixa do Motor (Inferior, onde ocorrem as falhas)
+            const engineBoxGeo = new THREE.BoxGeometry(5, 3, 5);
+            const engineBox = new THREE.Mesh(engineBoxGeo, matDarkMetal);
+            engineBox.position.set(0, -1.5, 2);
+            engineBox.receiveShadow = true;
+            escalatorGroup.add(engineBox);
+
+            // O Motor propriamente dito (Cilindro)
+            const motorGeo = new THREE.CylinderGeometry(1, 1, 3, 32);
+            const motorMat = new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.9, roughness: 0.2 });
+            motorMesh = new THREE.Mesh(motorGeo, motorMat);
+            motorMesh.rotation.z = Math.PI / 2;
+            motorMesh.position.set(0, -1, 2);
+            escalatorGroup.add(motorMesh);
+
+            // Ponto de Alerta (Luz e Esfera piscante no motor)
+            alertLight = new THREE.PointLight(0xff1744, 0, 10);
+            alertLight.position.set(0, -0.5, 2);
+            escalatorGroup.add(alertLight);
+            
+            const alertSphereGeo = new THREE.SphereGeometry(0.5, 16, 16);
+            alertSphereMat = new THREE.MeshBasicMaterial({ color: 0xff1744, transparent: true, opacity: 0 });
+            const alertSphere = new THREE.Mesh(alertSphereGeo, alertSphereMat);
+            alertSphere.position.copy(alertLight.position);
+            escalatorGroup.add(alertSphere);
+
+            // Centraliza o grupo na cena
+            escalatorGroup.position.set(0, 1, 5);
+            scene.add(escalatorGroup);
+
+            // Loop de Animação
+            const clock = new THREE.Clock();
+            function animate() {
+                animationId = requestAnimationFrame(animate);
+                controls.update();
+                
+                // Animação de Alerta Crítico
+                if (currentStatus === 'red') {
+                    const time = clock.getElapsedTime();
+                    const intensity = (Math.sin(time * 6) + 1) / 2; // Pisca rápido
+                    alertLight.intensity = intensity * 8;
+                    alertLight.color.setHex(0xff1744);
+                    alertSphereMat.color.setHex(0xff1744);
+                    alertSphereMat.opacity = 0.4 + (intensity * 0.6);
+                    motorMesh.material.color.setHex(0x550000); // Motor fica avermelhado
+                } else if (currentStatus === 'yellow') {
+                    const time = clock.getElapsedTime();
+                    const intensity = (Math.sin(time * 3) + 1) / 2; // Pisca lento
+                    alertLight.intensity = intensity * 4;
+                    alertLight.color.setHex(0xffea00);
+                    alertSphereMat.color.setHex(0xffea00);
+                    alertSphereMat.opacity = 0.2 + (intensity * 0.4);
+                    motorMesh.material.color.setHex(0x444444);
+                } else {
+                    alertLight.intensity = 0;
+                    alertSphereMat.opacity = 0;
+                    motorMesh.material.color.setHex(0x444444);
+                }
+                
+                renderer.render(scene, camera);
+            }
+            animate();
+            
+            // Resize handler
+            window.addEventListener('resize', () => {
+                if(!document.getElementById('detail-modal').classList.contains('active')) return;
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            });
+            
+            is3DInitialized = true;
+        }
+
+        // --- Gráfico de Temperatura (Chart.js) ---
+        let chartInstance = null;
+        function initChart(esc) {
+            const ctx = document.getElementById('tempChart').getContext('2d');
+            
+            if(chartInstance) {
+                chartInstance.destroy();
+            }
+
+            const isRed = esc.status === 'red';
+            const isYellow = esc.status === 'yellow';
+            
+            // Gera dados baseados no status para simular um histórico
+            let data = [];
+            let baseTemp = isRed ? esc.temp - 40 : (isYellow ? esc.temp - 10 : esc.temp - 2);
+            for(let i=0; i<8; i++) {
+                if(i === 7) data.push(esc.temp);
+                else {
+                    let val = baseTemp + (i * (esc.temp - baseTemp) / 7);
+                    // Adiciona um ruido
+                    val += (Math.random() * 4 - 2);
+                    data.push(Math.round(val));
+                }
+            }
+            
+            let color, bgColor;
+            if(isRed) { color = '#ff1744'; bgColor = 'rgba(255, 23, 68, 0.2)'; }
+            else if(isYellow) { color = '#ffea00'; bgColor = 'rgba(255, 234, 0, 0.2)'; }
+            else { color = '#00e676'; bgColor = 'rgba(0, 230, 118, 0.2)'; }
+
+            // Configuração global da fonte do Chart.js
+            Chart.defaults.color = '#999';
+            Chart.defaults.font.family = "'Inter', sans-serif";
+
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['-2h', '-1h45', '-1h30', '-1h15', '-1h', '-45m', '-15m', 'Agora'],
+                    datasets: [{
+                        label: 'Temperatura Motor (°C)',
+                        data: data,
+                        borderColor: color,
+                        backgroundColor: bgColor,
+                        borderWidth: 3,
+                        tension: 0.4,
+                        fill: true,
+                        pointBackgroundColor: '#111',
+                        pointBorderColor: color,
+                        pointBorderWidth: 2,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(0,0,0,0.8)',
+                            titleFont: { size: 13 },
+                            bodyFont: { size: 14, weight: 'bold' },
+                            padding: 12,
+                            borderColor: '#333',
+                            borderWidth: 1
+                        }
+                    },
+                    scales: {
+                        y: {
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            suggestedMin: 30
+                        },
+                        x: {
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- Lógica do Modal ---
+        function openModal(esc) {
+            currentStatus = esc.status;
+            
+            // Textos do Cabeçalho
+            document.getElementById('modal-title').innerText = `Escada Rolante ${esc.id}`;
+            document.getElementById('modal-subtitle').innerHTML = `<i class="fa-solid fa-location-dot"></i> ${esc.line} • ${esc.station}`;
+            
+            const badge = document.getElementById('modal-badge');
+            const s = getStatusInfo(esc.status);
+            badge.className = `status-badge ${s.class}`;
+            badge.innerHTML = `<i class="fa-solid ${s.icon}"></i> ${s.text}`;
+
+            // Elementos de UI Dinâmicos
+            const diagText = document.getElementById('diagnostic-text');
+            const statusText = document.getElementById('model-status-text');
+            const actionButtons = document.getElementById('action-buttons');
+            
+            const sensorTemp = document.getElementById('sensor-temp');
+            const sensorVibr = document.getElementById('sensor-vibr');
+            const valTemp = document.getElementById('val-temp');
+            const valVibr = document.getElementById('val-vibr');
+
+            valTemp.innerText = `${esc.temp} °C`;
+            valVibr.innerText = `${esc.vibr} mm/s`;
+
+            if(esc.status === 'red') {
+                diagText.innerHTML = `<strong style="color:var(--c-red);">FALHA CRÍTICA DETECTADA:</strong> O sistema detectou um aumento exponencial de temperatura no motor principal atingindo <strong>${esc.temp}°C</strong>, acompanhado de vibração severa no eixo de tração (<strong>${esc.vibr} mm/s</strong>). Desligamento automático de segurança foi acionado para evitar colapso estrutural ou princípio de incêndio.`;
+                statusText.innerHTML = `<i class="fa-solid fa-fire"></i> Superaquecimento Crítico no Motor`;
+                statusText.style.color = 'var(--c-red)';
+                statusText.style.background = 'rgba(255,23,68,0.1)';
+                statusText.style.borderColor = 'rgba(255,23,68,0.3)';
+                
+                sensorTemp.className = 'sensor-item critical';
+                sensorVibr.className = 'sensor-item critical';
+                
+                actionButtons.innerHTML = `
+                    <button class="btn-action btn-danger" onclick="alert('Ordem de serviço de EMERGÊNCIA gerada e enviada via Push para a equipe da estação.')">
+                        <i class="fa-solid fa-triangle-exclamation"></i> Emitir Ordem de Serviço de Emergência
+                    </button>
+                `;
+            } else if (esc.status === 'yellow') {
+                diagText.innerHTML = `Níveis de vibração acima da média operacional normal (<strong>${esc.vibr} mm/s</strong>). Recomenda-se vistoria preventiva para verificar alinhamento do eixo, integridade dos rolamentos e lubrificação. Não há risco iminente de parada.`;
+                statusText.innerHTML = `<i class="fa-solid fa-wrench"></i> Alerta de Vibração (Desgaste Inicial)`;
+                statusText.style.color = 'var(--c-yellow)';
+                statusText.style.background = 'rgba(255,234,0,0.1)';
+                statusText.style.borderColor = 'rgba(255,234,0,0.3)';
+                
+                sensorTemp.className = 'sensor-item';
+                sensorVibr.className = 'sensor-item warning';
+                
+                actionButtons.innerHTML = `
+                    <button class="btn-action" style="background: var(--c-yellow); color: #000;" onclick="alert('Vistoria preventiva agendada para a próxima janela de manutenção.')">
+                        <i class="fa-solid fa-calendar-check"></i> Agendar Vistoria Preventiva
+                    </button>
+                `;
+            } else {
+                diagText.innerHTML = `Equipamento operando dentro dos parâmetros ideais definidos pelo fabricante. Todos os sensores IoT indicam estabilidade térmica e mecânica. Sem ações necessárias.`;
+                statusText.innerHTML = `<i class="fa-solid fa-check"></i> Operação Normal e Estável`;
+                statusText.style.color = 'var(--c-green)';
+                statusText.style.background = 'rgba(0,230,118,0.1)';
+                statusText.style.borderColor = 'rgba(0,230,118,0.3)';
+                
+                sensorTemp.className = 'sensor-item';
+                sensorVibr.className = 'sensor-item';
+                
+                actionButtons.innerHTML = '';
+            }
+
+            // Mostra o Modal
+            document.getElementById('detail-modal').classList.add('active');
+            
+            // Inicializa componentes pesados após a transição CSS (para não travar a UI)
+            setTimeout(() => {
+                init3D();
+                initChart(esc);
+            }, 300);
+        }
+
+        function closeModal() {
+            document.getElementById('detail-modal').classList.remove('active');
+        }
+
+        // Fechar no ESC
+        document.addEventListener('keydown', (e) => {
+            if(e.key === 'Escape') closeModal();
+        });
+    </script>
+</body>
+</html>
